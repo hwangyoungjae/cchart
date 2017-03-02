@@ -1,0 +1,18 @@
+{% extends 'base/base.html' %}
+{% block title %}복리의법칙 나도해보자{% endblock %}
+{% block content %}
+    <div id="container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+    <script type="text/javascript">
+        $.get('/data.json', function(jsondata) {
+            Highcharts.chart('container', {
+               chart: {
+                    type: 'spline'
+                },
+                title: {
+                    text: '복리의법칙',
+                },
+                data: jsondata,
+            });
+        });
+    </script>
+{% endblock %}

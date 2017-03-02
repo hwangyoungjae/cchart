@@ -16,9 +16,17 @@ Including another URLconf
 from django.conf.urls import url
 from django.contrib import admin
 import web.views
+import web.views_edu
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^data.json$', web.views.data_json),
     url(r'^$', web.views.main_page),
+
+    url(r'^$', web.views.main_page),
+
+    url(r'^data.json$', web.views.data_json),
+    url(r'^edu/compound$', web.views_edu.compound),
+
+
+
 ]
