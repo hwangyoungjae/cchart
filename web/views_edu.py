@@ -3,7 +3,7 @@ from django.shortcuts import render, HttpResponse, render_to_response
 import random, json
 
 # Create your views here.
-def data_json(request):
+def compound_data(request):
     Fluctuation_ratio = 50  # 등락비율(%)
     ratio = Fluctuation_ratio / float(100)
     init_cost = 1000000  # 백만원
@@ -27,3 +27,8 @@ def data_json(request):
 
 def compound(request):
     return render_to_response('edu/compound.html')
+
+def costaverage_data(request):
+    pass
+def costaverage(request):
+    pass

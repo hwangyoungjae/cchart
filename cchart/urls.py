@@ -24,7 +24,7 @@ urlpatterns = [
 
     url(r'^$', web.views.main_page),
 
-    url(r'^data.json$', web.views.data_json),
+    url(r'^edu/compound.data$', web.views_edu.compound_data),
     url(r'^edu/compound$', web.views_edu.compound),
 
 
