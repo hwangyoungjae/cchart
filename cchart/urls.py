@@ -26,6 +26,9 @@ urlpatterns = [
 
     url(r'^edu/compound.data$', web.views_edu.compound_data),
     url(r'^edu/compound$', web.views_edu.compound),
+    url(r'^edu/costaverage.data$', web.views_edu.costaverage_data),
+    url(r'^edu/costaverage$', web.views_edu.costaverage),
+
 
 
 
