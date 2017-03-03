@@ -1,11 +1,15 @@
 # -*- encoding:utf8 -*-
-import random, json, datetime, time
+import random, json, datetime, time, math, locale
 import pandas_datareader.data
 from django.shortcuts import render, HttpResponse, render_to_response
 from django.core.exceptions import ObjectDoesNotExist
 from pandas import Series, DataFrame
 from django.utils import timezone
 from .models import *
+
+def dots(numeric):
+    locale.setlocale(locale.LC_ALL,'')
+    return locale.format('%3f',int(numeric),1).rsplit('.',1)[0]
 
 # Create your views here.
 def compound_data(request):
@@ -40,18 +44,202 @@ def costaverage_data(request):
     EDATE_DATETIME = datetime.datetime.strptime(EDATE_STR, '%Y-%m-%d')
 
     code = Code.objects.get(code=CODE)
+
+    # 캔들스틱 표출용
     return_data = list()
     for stock in Stock.objects.filter(code=code, date__gte=SDATE_DATETIME, date__lte=EDATE_DATETIME).order_by('date'):
         return_data.append(
-            (
-                int(time.mktime(stock.date.timetuple()) * 1000),
-                stock.open,
-                stock.high,
-                stock.low,
-                stock.close,
-            )
+            [int(time.mktime(stock.date.timetuple()) * 1000),stock.open,stock.high,stock.low,stock.close,]
         )
-    return HttpResponse(json.dumps(return_data), content_type='text/json')
+
+    #이동평균선 구하기용
+    adjclose_datas = list()
+    adjclose_index = list()
+    for stock in Stock.objects.filter(code=code, date__gte=SDATE_DATETIME - datetime.timedelta(days=120), date__lte=EDATE_DATETIME).order_by('date'):
+        adjclose_datas.append(stock.adjclose)
+        adjclose_index.append(int(time.mktime(stock.date.timetuple()) * 1000))
+
+    # 5일 이동평균선 데이터 생성
+    series = Series(data=adjclose_datas, index=adjclose_index).rolling(window=5).mean()
+    for index, date in enumerate([t[0] for t in return_data]):
+        if math.isnan(series[date]):
+            val = None
+        else:
+            val = series[date]
+        return_data[index].append(val)
+
+    # 20일 이동평균선 데이터 생성
+    series = Series(data=adjclose_datas, index=adjclose_index).rolling(window=20).mean()
+    for index, date in enumerate([t[0] for t in return_data]):
+        if math.isnan(series[date]):
+            val = None
+        else:
+            val = series[date]
+        return_data[index].append(val)
+
+    #골든크로스, 데드크로스 구하기
+    # GOLDENCROSS = []
+    # DEADCROSS = []
+    # BCOUNT = 0
+    # SELL_FLAG = False
+    # START = False
+    # for item in return_data:
+    #     DATE, OPEN, HIGH, LOW, CLOSE, MO5, MO20 = item
+    #     print DATE,
+    #     if MO5 > MO20:
+    #         ''' BUY 구간 '''
+    #         BCOUNT += 1
+    #         SELL_FLAG = True
+    #         if START:
+    #             if BCOUNT == 1:
+    #                 GOLDENCROSS.append({'x': DATE, 'title': 'GC'})
+    #                 print BCOUNT,'BUY', 'GOLDEN CROSS'
+    #             else:
+    #                 print BCOUNT,'BUY'
+    #         else:
+    #             print BCOUNT, 'HOLD'
+    #     else:
+    #         BCOUNT = 0
+    #         if START:
+    #             if SELL_FLAG:
+    #                 START = True
+    #                 SELL_FLAG = False
+    #                 DEADCROSS.append({'x': DATE, 'title': 'DC(SELL)'})
+    #                 print BCOUNT, 'SELL', 'DEAD CROSS'
+    #             else:
+    #                 print BCOUNT, 'HOLD'
+    #         else:
+    #             if SELL_FLAG:
+    #                 START = True
+    #                 SELL_FLAG = False
+    #                 DEADCROSS.append({'x': DATE, 'title': 'DC(HOLD)'})
+    #                 print BCOUNT, 'HOLD', 'DEAD CROSS'
+    #             else:
+    #                 print BCOUNT, 'HOLD'
+
+    ALIST = [] # 계좌잔고
+    BLIST = []  # 주식 보유 수량
+    CLIST = []  # 현금 잔고
+    DLIST = []  # 계좌 잔고
+
+    BALANCE = 100000000 # 계좌 잔고(1억원)
+    BUYCOST = 1000000  # 구매 금액 (백만원)
+    USED_MARGIN = 0 #구매할때 사용한 금액(적립금) ,총 사용한 금액
+    TRADE_COUNT = 0 #주식 보유 수량
+
+    GOLDENCROSS = [] #골든크로스
+    DEADCROSS = [] #데드크로스
+    BUYPOSITION = [] #바이 포지션
+    BCOUNT = 0
+    SELL_FLAG = False
+    START = False
+    for i,item in enumerate(return_data):
+        DATE, OPEN, HIGH, LOW, CLOSE, MO5, MO20 = item
+        if i == 0:
+            if MO5 < MO20:
+                START = True
+        ADSCLOSE = series[DATE]
+        # print DATE,
+        if MO5 > MO20:
+            ''' BUY 구간 '''
+            BCOUNT += 1
+            SELL_FLAG = True
+            if START:
+                if BCOUNT == 1:
+                    GOLDENCROSS.append({'x': DATE, 'title': 'GC'})
+                    # print BCOUNT, 'BUY(a)',
+                # else:
+                #     print BCOUNT,'BUY(b)',
+                # 구매 계산하기
+                BUY_LOTS = int(math.floor(BUYCOST / ADSCLOSE))  # 구매 가능한 계좌수 / 버림
+                REQUIRED_MARGIN = BUY_LOTS * ADSCLOSE  # 구매에 필요한 금액
+
+                BALANCE -= REQUIRED_MARGIN
+                USED_MARGIN += REQUIRED_MARGIN
+                TRADE_COUNT += BUY_LOTS
+
+                A = TRADE_COUNT * ADSCLOSE  # 그동한 구매한 주식을 판매한 금액
+                B = USED_MARGIN/TRADE_COUNT #매입 평균 단가
+                # print '/ 적립액:',dots(REQUIRED_MARGIN),
+                # print '/ 주가:', dots(ADSCLOSE),
+                # print '/ 구매좌수:', BUY_LOTS,
+                # print '/ 누적좌수:', TRADE_COUNT,
+                # print '/ 누적적립액:', dots(USED_MARGIN),
+                # # print '/ 매입평균단가:',dots(B),
+                # print '/ 판매시 잔액:',dots(BALANCE + A),
+                # print
+                ALIST.append((DATE, BALANCE + A))
+                BLIST.append((DATE, TRADE_COUNT))
+                BUYPOSITION.append({'x': DATE, 'title': 'buy'})
+            else:
+                # print BCOUNT, 'HOLD(c)',
+                # print '/ 누적좌수:', TRADE_COUNT,
+                # print '/ 잔액:',dots(BALANCE),
+                # print
+                ALIST.append((DATE, BALANCE))
+                BLIST.append((DATE, TRADE_COUNT))
+        else:
+            BCOUNT = 0
+            if START:
+                if SELL_FLAG:
+                    START = True
+                    SELL_FLAG = False
+                    DEADCROSS.append({'x': DATE, 'title': 'DC(SELL)'})
+                    A = TRADE_COUNT * ADSCLOSE #구동한 구매한 주식을 판매한 금액
+
+                    # print BCOUNT, 'SELL(d)',
+                    # print '/ 판매액:', dots(A),
+                    # print '/ 주가:', dots(ADSCLOSE),
+                    # print '/ 판매좌수:', TRADE_COUNT,
+                    # print '/ 누적좌수:', 0,
+                    # print '/ 누적적립액:', dots(USED_MARGIN),
+                    # # print '/ 매입평균단가:',dots(B),
+                    # print '/ 판매시 잔액:', dots(BALANCE + A),
+                    # print
+                    ALIST.append((DATE, BALANCE + A))
+                    BLIST.append((DATE, TRADE_COUNT))
+
+                    BALANCE += A
+                    TRADE_COUNT = 0
+
+                else:
+                    # print BCOUNT, 'HOLD(e)',
+                    # print '/ 누적좌수:', TRADE_COUNT,
+                    # print '/ 잔액:', dots(BALANCE),
+                    # print
+                    ALIST.append((DATE, BALANCE))
+                    BLIST.append((DATE, TRADE_COUNT))
+            else:
+                if SELL_FLAG:
+                    START = True
+                    SELL_FLAG = False
+                    DEADCROSS.append({'x': DATE, 'title': 'DC(HOLD)'})
+                    # print BCOUNT, 'HOLD(f)', 'DC',
+                    # print '/ 누적좌수:', TRADE_COUNT,
+                    # print '/ 잔액:', dots(BALANCE),
+                    # print
+                    ALIST.append((DATE, BALANCE))
+                    BLIST.append((DATE, TRADE_COUNT))
+                else:
+                    # print BCOUNT, 'HOLD(g)'
+                    ALIST.append((DATE, BALANCE))
+                    BLIST.append((DATE, TRADE_COUNT))
+
+    # 계좌잔고
+    A_series = Series(index=[t[0] for t in ALIST], data=[t[1] for t in ALIST])
+    B_series = Series(index=[t[0] for t in BLIST], data=[t[1] for t in BLIST])
+    for index, date in enumerate([t[0] for t in return_data]):
+        # print index, date, series[date]
+        return_data[index].append(A_series[date]) # 계좌 잔고
+        if B_series[date]:
+            return_data[index].append(B_series[date]) # 주식 보유 수량
+        else:
+            return_data[index].append(None)  # 주식 보유 수량
+
+
+    return HttpResponse(json.dumps([return_data,GOLDENCROSS,DEADCROSS,BUYPOSITION,]), content_type='text/json')
+
+
 def costaverage(request):
     try:
         CODE = request.GET['code']
@@ -74,6 +262,7 @@ def costaverage(request):
 
     try:#DB에 있으면 PASS
         code = Code.objects.get(code=CODE)
+        print Stock.objects.filter(code=code)
     except ObjectDoesNotExist: #없으면 추가
         code = Code(code=CODE)
         code.save()
@@ -89,91 +278,10 @@ def costaverage(request):
                   volume=DataFrame['Volume'][index]
                   ).save()
 
-    #이동평균선 구하기 위한 데이터 추출
-    date_list = list()
-    adjclose_list = list()
-    for stock in Stock.objects.filter(code=code, date__gte=SDATE_DATETIME, date__lte=EDATE_DATETIME).order_by('date'):
-        date_list.append(int(time.mktime(stock.date.timetuple()) * 1000))
-        adjclose_list.append(stock.adjclose)
-    series = Series(
-        data=adjclose_list,
-        index=date_list,
-    )
-
-    class Gen_movingaverage:
-        def __init__(self,series, name, days, type='spline'):
-            self.CHART = {
-                'name': name,
-                'id': name,
-                'type': type,
-                'data': list(),
-            }
-            self.DATA = series.rolling(window=days).mean()
-            for index in self.DATA.index:
-                self.CHART['data'].append((index, self.DATA[index], self.DATA[index], self.DATA[index], self.DATA[index],))
-        def chart(self, tojson=True):
-            if tojson:
-                return json.dumps(self.CHART)
-            else:
-                return json.dumps(self.CHART)
-        def data(self):
-            return self.DATA
-
-    M5 = Gen_movingaverage(series=series, name='M5', days=5)
-    M20 = Gen_movingaverage(series=series, name='M20', days=20)
-
-
-    ### Add Chart
-    AddCharts = list()
-    AddCharts.append(M5.chart(True))
-    AddCharts.append(M20.chart(True))  # 20일 이동평균선
-
-    ### 골든크로스
-    glod_cross = {
-        'type': 'flags',
-        'name': 'golden cross',
-        'data': list(),
-        'onSeries': 'M5',
-        'shape': 'squarepin',
-    }
-    Add = 0
-    for index in M5.data().index:
-        if M5.data()[index] > M20.data()[index]:
-            Add += 1
-        else:
-            Add = 0
-        print Add
-        if Add == 1:
-            glod_cross['data'].append({'x': index,'title': 'Golden cross'})
-
-    ### 데드크로스
-    dead_cross = {
-        'type': 'flags',
-        'name': 'dead cross',
-        'data': list(),
-        'onSeries': 'M5',
-        'shape': 'squarepin',
-    }
-    Add = 0
-    for index in M5.data().index:
-        if M5.data()[index] < M20.data()[index]:
-            Add += 1
-        else:
-            Add = 0
-        print Add
-        if Add == 1:
-            dead_cross['data'].append({'x': index, 'title': 'Dead cross'})
-
-
-
-
-
-
     return render(request, 'edu/costaverage.html',{
         'CODE':CODE,
         'SDATE': SDATE_STR,
         'EDATE': EDATE_STR,
-        'AddCharts': AddCharts,
-        'GLODENCROSS':glod_cross,
-        'DEADCROSS':dead_cross,
+        # 'GLODENCROSS':glod_cross,
+        # 'DEADCROSS':dead_cross,
     })
