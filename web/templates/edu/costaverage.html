@@ -10,7 +10,7 @@
             <input type="submit">
         </form>
     </div>
-    <div id="container" style="min-width: 310px; height: 100%; margin: 0 auto"></div>
+    <div id="chart_container" style="min-width: 310px; height: 100%; margin: 0 auto"></div>
     <script type="text/javascript">
         $.getJSON('/edu/costaverage.data?code={{ CODE }}&sdate={{ SDATE }}&edate={{ EDATE }}', function (data) {
             var ohlc = [];
@@ -54,7 +54,7 @@
             var deadcrossdata = data[2];
             var buypositiondata = data[3];
 
-            Highcharts.stockChart('container', {
+            Highcharts.stockChart('chart_container', {
                 rangeSelector: {
                     selected: 1
                 },
