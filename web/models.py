@@ -18,6 +18,16 @@ class Stock(models.Model):
     def __unicode__(self):
         return str(self.date)
 
+class History(models.Model):
+    sco_ip = models.CharField(max_length=15)
+    sco_datetime = models.DateTimeField(auto_now_add=True)
+    sco_referer = models.URLField(null=True, blank=True, default='')
+    sco_current = models.URLField(null=True, blank=True, default='')
+    sco_agent = models.CharField(max_length=1024, null=True, blank=True, default='')
+    sco_method = models.CharField(max_length=6, null=True, blank=True, default='')
+
+
+
 
 
 

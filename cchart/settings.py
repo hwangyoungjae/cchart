@@ -118,12 +118,14 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
-
-STATIC_URL = '/static/'
-# STATIC_ROOT = os.path.join(BASE_DIR,'static')
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
+DEV = True
+if DEV:
+    STATIC_URL = '/static/'
+    STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static'),]
+    BASEURL = '/'
+else:
+    STATIC_URL = '/cchart/static/'
+    STATIC_ROOT = os.path.join(BASE_DIR,'static')
+    BASEURL = 'http://192.168.0.15/cchart'

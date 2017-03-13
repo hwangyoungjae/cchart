@@ -15,6 +15,7 @@ Including another URLconf
 """
 from django.conf.urls import url
 from django.contrib import admin
+from django.views.generic import TemplateView
 import web.views
 import web.views_edu
 
@@ -22,13 +23,29 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', web.views.main_page),
 
-    url(r'^$', web.views.main_page),
+    url(r'^test$', web.views.test.as_view()),
+    url(r'^test_test$', web.views.test_page),
+
+    url(r'^request$', web.views.request_page),
+    url(r'^request.meta$', web.views.request_meta_page),
+
+
+
+
+
 
     url(r'^edu/compound.data$', web.views_edu.compound_data),
     url(r'^edu/compound$', web.views_edu.compound),
+
     url(r'^edu/costaverage.data$', web.views_edu.costaverage_data),
     url(r'^edu/costaverage$', web.views_edu.costaverage),
 
+    url(r'^edu/realtime$', web.views_edu.realtime),
+    url(r'^edu/realtimeT$', TemplateView.as_view(template_name='edu/realtime.html')),
+    url(r'^edu/realtime.data$', web.views_edu.realtime_data),
+
+    # url(r'^test$', web.views.MyFormView.as_view()),
+    # url(r'^ttt$', web.views.ttt),
 
 
 

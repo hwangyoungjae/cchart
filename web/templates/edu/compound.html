@@ -1,19 +1,98 @@
 {% extends 'base/base.html' %}
+{% load global %}
 {% block title %}복리의법칙 나도해보자{% endblock %}
-{% block extendjs %}<script type="text/javascript" src="/static/js/highcharts.js"></script>{% endblock %}
+{% block extendjs %}<script type="text/javascript" src="{% URL %}/static/js/highcharts.js{% ENDURL %}"></script>{% endblock %}
 {% block content %}
+    <div>
+        {% if start %}
+            <form method="GET" action="{% URL %}/edu/compound{% ENDURL %}">
+                <label>등락비율 : </label><input type="text" name="change_ratio" value="{{ change_ratio }}">%
+                <input type="submit" value="다시시작">
+            </form>
+            <div>
+                <button onclick="compound(1)">1회투자</button>
+                <button onclick="compound(5)">5회투자</button>
+                <button onclick="compound(10)">10회투자</button>
+            </div>
+        {% else %}
+            <form method="GET" action="{% URL %}/edu/compound{% ENDURL %}">
+                <label>등락비율 : </label><input type="text" name="change_ratio" value="{{ change_ratio }}">%
+                <input type="submit" value="시작하기">
+            </form>
+        {% endif %}
+    </div>
     <div id="chart_container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+    {% if start %}
+    <table id="history">
+        <tr>
+            <td>횟수</td>
+            <td>증감</td>
+            <td>금액</td>
+        </tr>
+    </table>
+    
     <script type="text/javascript">
-        $.get('/edu/compound.data', function(jsondata) {
-            Highcharts.chart('chart_container', {
-               chart: {
-                    type: 'spline'
+        var cost = 1000000;
+        var change_ratio = {{ change_ratio }};
+        var x = 1;
+        
+        var highcharts = Highcharts.chart('chart_container', {
+                animation: Highcharts.svg, //좀더 빠르게 출력할수 있는 애니메이션
+                
+                 legend: {
+                    enabled: false,
                 },
+                exporting: {
+                    enabled: false,
+                },
+                //plotOptions: {
+                //    line: {
+                //        dataLabels: {
+                //            enabled: true,
+                //        },
+                //        enableMouseTracking: false,
+                //    }
+                //},
+                
+                chart: {
+                    type: 'line'
+                },
+                
                 title: {
                     text: '복리의법칙',
+                    
                 },
-                data: jsondata,
+                
+                series: [
+                    {
+                        name: '주식가격',
+                        data: [[x,1000000],],
+                    },
+                ],
             });
-        });0
+        $("#history").html($("#history").html() + '<tr><td>'+x+'</td><td>'+0+'</td><td>'+cost+'</td></tr>')
+        function compound(count){
+            $.getJSON('{% URL %}/edu/compound.data?cost=' + cost + '&change_ratio=' + change_ratio + '&count=' + count + '{% ENDURL %}', function(json){
+                var i;
+                var dataLength = json.length;
+                for (i = 0; i < dataLength; i += 1) {
+                    cost = json[i][0];
+                    pcost = json[i][1]
+                    pchanagecost = json[i][2]
+                    highcharts.series[0].addPoint([++x, cost]);
+                    if (pchanagecost[0] == '+') {
+                        $("#history").html($("#history").html() + '<tr style="color:blue;"><td>'+x+'</td><td>'+ pchanagecost +'</td><td>'+pcost+'</td></tr>')
+                    } else {
+                        $("#history").html($("#history").html() + '<tr style="color:red;"><td>'+x+'</td><td>'+ pchanagecost +'</td><td>'+pcost+'</td></tr>')
+                    };
+                    
+                };
+                    
+                
+            });
+        };
     </script>
+    {% endif %}
+    
+
 {% endblock %}

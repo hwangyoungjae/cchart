@@ -1,18 +1,19 @@
 {% extends 'base/base.html' %}
+{% load global %}
 {% block title %}코스트 에버리지 나도해보자{% endblock %}
-{% block extendjs %}<script type="text/javascript" src="/static/js/highstock.js"></script>{% endblock %}
+{% block extendjs %}<script type="text/javascript" src="{% URL %}/static/js/highstock.js{% ENDURL %}"></script>{% endblock %}
 {% block content %}
     <div>
-        <form method="GET" action="/edu/costaverage">
+        <form method="GET" action="{% URL %}/edu/costaverage{% ENDURL %}">
             <label>종목코드 : <input type="text" name="code" value="{{ CODE }}"></label>
             <label>sdate : <input type="date" name="sdate" value="{{ SDATE }}"></label>
             <label>edate : <input type="date" name="edate" value="{{ EDATE }}"></label>
             <input type="submit">
         </form>
     </div>
-    <div id="chart_container" style="min-width: 310px; height: 100%; margin: 0 auto"></div>
+    <div id="chart_container" style="min-width: 310px; height: 800px; margin: 0 auto"></div>
     <script type="text/javascript">
-        $.getJSON('/edu/costaverage.data?code={{ CODE }}&sdate={{ SDATE }}&edate={{ EDATE }}', function (data) {
+        $.getJSON('{% URL %}/edu/costaverage.data?code={{ CODE }}&sdate={{ SDATE }}&edate={{ EDATE }}{% ENDURL %}', function (data) {
             var ohlc = [];
             var m5data = [];
             var m20data = [];
@@ -55,6 +56,9 @@
             var buypositiondata = data[3];
 
             Highcharts.stockChart('chart_container', {
+                chart: {
+                    animation: Highcharts.svg,
+                },
                 rangeSelector: {
                     selected: 1
                 },

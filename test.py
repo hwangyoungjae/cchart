@@ -2,14 +2,29 @@
 import os,sys,time,datetime
 import pandas_datareader.data
 from pandas import Series, DataFrame
-import json, math, MySQLdb
+import pandas
+import json, math, MySQLdb, random
 
-# daeshin = {'open':  [11650, 11100, 11200, 11100, 11000],
-#            'high':  [12100, 11800, 11200, 11100, 11150],
-#            'low' :  [11600, 11050, 10900, 10950, 10900],
-#            'close': [11900, 11600, 11000, 11100, 11050]}
-#
-# daeshin_day = DataFrame(daeshin)
+
+cnt = 100
+
+daeshin = {
+    'open':  [random.choice(range(10000,15000)) for t in range(cnt)],
+    'high':  [random.choice(range(10000,15000)) for t in range(cnt)],
+    'low' :  [random.choice(range(10000,15000)) for t in range(cnt)],
+    'close': [random.choice(range(10000,15000)) for t in range(cnt)],
+}
+
+index = pandas.date_range('20160101',periods=len(daeshin['open']))
+
+
+daeshin_day = DataFrame(data=daeshin,index=index)
+import matplotlib.pyplot as plt
+daeshin_day.plot()
+plt.show()
+
+
+
 # print(daeshin_day)
 #
 # date = ['16.02.29', '16.02.26', '16.02.25', '16.02.24', '16.02.23']
@@ -17,20 +32,20 @@ import json, math, MySQLdb
 # print daeshin_day
 
 
-con = MySQLdb.connect('192.168.0.15','root','Admin2013!','cchart')
-cur = con.cursor()
-
-cur.execute('SELECT * FROM web_code;')
-print cur._executed
-for row in cur.fetchall():
-    CODE, = row
-    cur.execute('SELECT COUNT(1) FROM web_stock WHERE code_id=%s;',(CODE,))
-    print cur._executed
-    if not cur.fetchone()[0]:
-        cur.execute('DELETE FROM web_code WHERE code=%s;',(CODE,))
-        print cur._executed
-con.commit()
-con.close()
+# con = MySQLdb.connect('192.168.0.15','root','Admin2013!','cchart')
+# cur = con.cursor()
+#
+# cur.execute('SELECT * FROM web_code;')
+# print cur._executed
+# for row in cur.fetchall():
+#     CODE, = row
+#     cur.execute('SELECT COUNT(1) FROM web_stock WHERE code_id=%s;',(CODE,))
+#     print cur._executed
+#     if not cur.fetchone()[0]:
+#         cur.execute('DELETE FROM web_code WHERE code=%s;',(CODE,))
+#         print cur._executed
+# con.commit()
+# con.close()
 
 
 

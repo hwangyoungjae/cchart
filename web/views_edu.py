@@ -1,42 +1,113 @@
 # -*- encoding:utf8 -*-
-import random, json, datetime, time, math, locale
-import pandas_datareader.data
 from django.shortcuts import render, HttpResponse, render_to_response
 from django.core.exceptions import ObjectDoesNotExist
 from pandas import Series, DataFrame
 from django.utils import timezone
 from .models import *
+import random, json, datetime, time, math, locale
+import pandas_datareader.data
+
+class sco:
+    def __init__(self, func):
+        self.func = func
+    def __call__(self, request):
+        self.request = request
+        history = History(
+            sco_ip=self.sco_ip(),
+            sco_referer=self.sco_referer(),
+            sco_current=self.sco_current(),
+            sco_agent=self.sco_agent(),
+            sco_method=self.sco_method(),
+        )
+        history.save()
+        return self.func(request)
+    def sco_ip(self):
+        x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            return x_forwarded_for.split(',')[0]
+        else:
+            return self.request.META.get('REMOTE_ADDR')
+    def sco_referer(self):
+        try:
+            return self.request.META['HTTP_REFERER']
+        except KeyError:
+            return ''
+    def sco_current(self):
+        return self.request.get_raw_uri()
+    def sco_agent(self):
+        return self.request.META['HTTP_USER_AGENT']
+    def sco_method(self):
+        return self.request.method
 
 def dots(numeric):
     locale.setlocale(locale.LC_ALL,'')
     return locale.format('%3f',int(numeric),1).rsplit('.',1)[0]
 
 # Create your views here.
+# def compound_data(request):
+#     Fluctuation_ratio = 50  # 등락비율(%)
+#     ratio = Fluctuation_ratio / float(100)
+#     init_cost = 1000000  # 백만원
+#     Counts = [None, ]
+#     Costs = ['주식가격',]
+#     for i in range(1,101):
+#         Counts.append(str(i))
+#         if random.choice((True, False)):
+#             init_cost += init_cost * ratio
+#             Costs.append(init_cost)
+#         else:
+#             init_cost -= init_cost * ratio
+#             Costs.append(init_cost)
+#     data = {
+#         'columns': [
+#             Counts,
+#             Costs,
+#         ]
+#     }
+#     return HttpResponse(json.dumps(data),content_type='text/json')
+@sco
 def compound_data(request):
-    Fluctuation_ratio = 50  # 등락비율(%)
-    ratio = Fluctuation_ratio / float(100)
-    init_cost = 1000000  # 백만원
-    Counts = [None, ]
-    Costs = ['주식가격',]
-    for i in range(1,101):
-        Counts.append(str(i))
-        if random.choice((True, False)):
-            init_cost += init_cost * ratio
-            Costs.append(init_cost)
-        else:
-            init_cost -= init_cost * ratio
-            Costs.append(init_cost)
-    data = {
-        'columns': [
-            Counts,
-            Costs,
-        ]
-    }
-    return HttpResponse(json.dumps(data),content_type='text/json')
-def compound(request):
-    return render(request, 'edu/compound.html')
 
+    cost = float(request.GET['cost'])
+    change_ratio = int(request.GET['change_ratio'])
+    ratio = change_ratio / float(100)
+    count = int(request.GET['count'])
+
+    data = list()
+    for i in range(count):
+        c = cost * ratio
+        if random.choice((True, False)):
+            cost += c
+            cc = '+' + dots(c)
+        else:
+            cost -= c
+            cc = '-' + dots(c)
+        data.append([cost,dots(cost), cc, ])
+    return HttpResponse(json.dumps(data), content_type='text/json')
+@sco
+def compound(request):
+
+    try:
+        change_ratio = request.GET['change_ratio'].strip()
+        try:
+            change_ratio = int(change_ratio)
+        except ValueError:
+            change_ratio = 30
+        if change_ratio < 0:
+            change_ratio = change_ratio - change_ratio - change_ratio
+        start = True
+    except KeyError:
+        change_ratio = 30
+        start = False
+
+    return render(request, 'edu/compound.html',{
+        'change_ratio': change_ratio,
+        'start':start,
+    })
+
+@sco
 def costaverage_data(request):
+
     CODE = request.GET['code']
     SDATE_STR = request.GET['sdate']
     SDATE_DATETIME = datetime.datetime.strptime(SDATE_STR, '%Y-%m-%d')
@@ -76,46 +147,6 @@ def costaverage_data(request):
         else:
             val = series[date]
         return_data[index].append(val)
-
-    #골든크로스, 데드크로스 구하기
-    # GOLDENCROSS = []
-    # DEADCROSS = []
-    # BCOUNT = 0
-    # SELL_FLAG = False
-    # START = False
-    # for item in return_data:
-    #     DATE, OPEN, HIGH, LOW, CLOSE, MO5, MO20 = item
-    #     print DATE,
-    #     if MO5 > MO20:
-    #         ''' BUY 구간 '''
-    #         BCOUNT += 1
-    #         SELL_FLAG = True
-    #         if START:
-    #             if BCOUNT == 1:
-    #                 GOLDENCROSS.append({'x': DATE, 'title': 'GC'})
-    #                 print BCOUNT,'BUY', 'GOLDEN CROSS'
-    #             else:
-    #                 print BCOUNT,'BUY'
-    #         else:
-    #             print BCOUNT, 'HOLD'
-    #     else:
-    #         BCOUNT = 0
-    #         if START:
-    #             if SELL_FLAG:
-    #                 START = True
-    #                 SELL_FLAG = False
-    #                 DEADCROSS.append({'x': DATE, 'title': 'DC(SELL)'})
-    #                 print BCOUNT, 'SELL', 'DEAD CROSS'
-    #             else:
-    #                 print BCOUNT, 'HOLD'
-    #         else:
-    #             if SELL_FLAG:
-    #                 START = True
-    #                 SELL_FLAG = False
-    #                 DEADCROSS.append({'x': DATE, 'title': 'DC(HOLD)'})
-    #                 print BCOUNT, 'HOLD', 'DEAD CROSS'
-    #             else:
-    #                 print BCOUNT, 'HOLD'
 
     ALIST = [] # 계좌잔고
     BLIST = []  # 주식 보유 수량
@@ -239,8 +270,9 @@ def costaverage_data(request):
 
     return HttpResponse(json.dumps([return_data,GOLDENCROSS,DEADCROSS,BUYPOSITION,]), content_type='text/json')
 
-
+@sco
 def costaverage(request):
+
     try:
         CODE = request.GET['code']
     except KeyError:
@@ -285,3 +317,28 @@ def costaverage(request):
         # 'GLODENCROSS':glod_cross,
         # 'DEADCROSS':dead_cross,
     })
+@sco
+def realtime(request):
+
+    return render(request, 'edu/realtime.html')
+@sco
+def realtime_data(request):
+
+    try:
+        if request.GET['type'] == 'date':
+            return HttpResponse(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),content_type='text/json')
+        elif request.GET['type'] == 'init':
+            datas = list()
+            for i in range(-30+1, 0+1):
+                data = [
+                    (datetime.datetime.now() + datetime.timedelta(seconds=i)).strftime('%Y-%m-%d %H:%M:%S'),
+                    None,
+                ]
+                datas.append(data)
+            return HttpResponse(json.dumps(datas), content_type='text/json')
+    except KeyError:
+        pass
+
+
+    data = [datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), random.choice(range(-100,101))]
+    return HttpResponse(json.dumps(data), content_type='text/json')

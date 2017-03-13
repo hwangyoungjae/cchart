@@ -1,0 +1,74 @@
+{% extends 'base/base.html' %}
+{% load global %}
+{% block title %}코스트 에버리지 나도해보자{% endblock %}
+{% block extendjs %}<script type="text/javascript" src="{% URL %}/static/js/highcharts.js{% ENDURL %}"></script>{% endblock %}
+{# {% block extendjs %}<script src="https://code.highcharts.com/highcharts.js"></script>{% endblock %} #}
+
+{% block content %}
+    <div id="chart_container" style="min-width: 310px; height: 800px;margin: 0 auto"></div>
+    <button onclick="get_something()">
+        ttttttt
+    </button>
+    <div id="logging"></div>
+    <script type="text/javascript">    
+    var x = 0;
+    var old_json = null;
+    var data = [];
+    
+    data.push(['2017-03-07 12:34:01',1])
+    data.push(['2017-03-07 12:34:02',2])
+    
+    var ddd = {
+        chart: {
+            type: 'line',
+            animation: Highcharts.svg,
+        },
+        
+        xAxis: {
+            type:'text',
+            tickPixelInterval: 100,
+        },
+        
+        series: [
+            {
+                name: 'Random data',
+                data: [],
+            },
+        ],
+    };
+    
+    var highcharts = Highcharts.chart('chart_container', ddd);
+    //[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+    var series = highcharts.series[0];
+    var x = 0;
+    
+    var y = 0;
+    var ago = 0;
+    
+    var a = 0;
+    var b = 1;
+    var c = 0;
+    
+    setInterval(
+        function() {
+            get_something();
+        },1000
+    );
+
+    var toggle = 1;
+    function get_something(){
+        var logging = $('#logging');
+        if (toggle) {
+            toggle = 0
+            series.addPoint([x++, -a]);
+        } else {
+            toggle = 1
+            series.addPoint([x++, a]);
+        };
+        c = a;
+        a = b;
+        b = c + b;
+        logging.html('count : ' + series.data.length)
+    };
+    </script>
+{% endblock %}
