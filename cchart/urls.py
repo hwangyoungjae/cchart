@@ -37,8 +37,11 @@ urlpatterns = [
     url(r'^edu/compound.data$', web.views_edu.compound_data),
     url(r'^edu/compound$', web.views_edu.compound),
 
-    url(r'^edu/costaverage.data$', web.views_edu.costaverage_data),
     url(r'^edu/costaverage$', web.views_edu.costaverage),
+    url(r'^edu/costaverage.data$', web.views_edu.costaverage_data),
+
+    url(r'^edu/costaverage2$', web.views_edu.costaverage2),
+    url(r'^edu/costaverage.data2$', web.views_edu.costaverage_data2),
 
     url(r'^edu/realtime$', web.views_edu.realtime),
     url(r'^edu/realtimeT$', TemplateView.as_view(template_name='edu/realtime.html')),

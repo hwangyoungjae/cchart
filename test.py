@@ -6,22 +6,29 @@ import pandas
 import json, math, MySQLdb, random
 
 
-cnt = 100
-
-daeshin = {
-    'open':  [random.choice(range(10000,15000)) for t in range(cnt)],
-    'high':  [random.choice(range(10000,15000)) for t in range(cnt)],
-    'low' :  [random.choice(range(10000,15000)) for t in range(cnt)],
-    'close': [random.choice(range(10000,15000)) for t in range(cnt)],
-}
-
-index = pandas.date_range('20160101',periods=len(daeshin['open']))
+from pandas import Series, DataFrame
+a = Series(list())
+for date,data in [['2015-01-01',123],['2015-01-02',132],['2015-01-03',321],]:
 
 
-daeshin_day = DataFrame(data=daeshin,index=index)
-import matplotlib.pyplot as plt
-daeshin_day.plot()
-plt.show()
+
+
+# cnt = 100
+#
+# daeshin = {
+#     'open':  [random.choice(range(10000,15000)) for t in range(cnt)],
+#     'high':  [random.choice(range(10000,15000)) for t in range(cnt)],
+#     'low' :  [random.choice(range(10000,15000)) for t in range(cnt)],
+#     'close': [random.choice(range(10000,15000)) for t in range(cnt)],
+# }
+#
+# index = pandas.date_range('20160101',periods=len(daeshin['open']))
+#
+#
+# daeshin_day = DataFrame(data=daeshin,index=index)
+# import matplotlib.pyplot as plt
+# daeshin_day.plot()
+# plt.show()
 
 
 

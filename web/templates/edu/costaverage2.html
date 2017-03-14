@@ -1,0 +1,224 @@
+{% extends 'base/base.html' %}
+{% load global %}
+{% block title %}코스트 에버리지 나도해보자{% endblock %}
+{% block extendjs %}<script type="text/javascript" src="{% URL %}/static/js/highstock.js{% ENDURL %}"></script>{% endblock %}
+{% block content %}
+    <div>
+        <form method="GET" action="{% URL %}/edu/costaverage2{% ENDURL %}">
+            <label>종목코드 : <input type="text" name="code" value="{{ CODE }}"></label>
+            <label>sdate : <input type="date" name="sdate" value="{{ SDATE }}"></label>
+            <label>edate : <input type="date" name="edate" value="{{ EDATE }}"></label>
+            <input type="submit">
+        </form>
+    </div>
+    <div id="chart_container" style="min-width: 310px; height: 800px; margin: 0 auto"></div>
+    <script type="text/javascript">
+        $.getJSON('{% URL %}/edu/costaverage.data2?code={{ CODE }}&sdate={{ SDATE }}&edate={{ EDATE }}{% ENDURL %}', function (data) {
+            //[0] = date
+            //[1] = open
+            //[2] = high
+            //[3] = low
+            //[4] = close
+            //[5] = 5일 이동 평균선
+            //[6] = 20일 이동 평균선
+            //[7] = 60일 이동 평균선
+            //[8] = 120일 이동 평균선
+            //[10] = 주식 보유수
+            //[11] = 계좌 잔고
+            //[12] = PROFIT
+            //[13] = 총 자산
+            
+            var ohlc = []; //캔들챠트
+            var m5data = []; // 5일 이동평균선
+            var m20data = []; // 20일 이동평균선
+            var m60data = []; // 60일 이동평균선
+            var m120data = []; // 120일 이동평균선
+            
+            var trade_count = []; //주식 보유수
+            var balance = []; //계좌 잔고
+            var profit = []; //PROFIT
+            var margin = []; //총 자산
+            
+            var i = 0;
+            var dataLength = data[0].length;
+            
+            for (i; i < dataLength; i += 1) {
+                ohlc.push([
+                    data[0][i][0], // the date
+                    data[0][i][1], // open
+                    data[0][i][2], // high
+                    data[0][i][3], // low
+                    data[0][i][4], // close
+                ]);
+
+                m5data.push([
+                    data[0][i][0], // the date
+                    data[0][i][6] // the 5days moving average
+                ]);
+
+                m20data.push([
+                    data[0][i][0], // the date
+                    data[0][i][7] // the 20days moving average
+                ]);
+                
+                m60data.push([
+                    data[0][i][0], // the date
+                    data[0][i][8] // the 60days moving average
+                ]);
+                
+                m120data.push([
+                    data[0][i][0], // the date
+                    data[0][i][9] // the 120days moving average
+                ]);
+                
+                trade_count.push([
+                    data[0][i][0], // the date
+                    data[0][i][10] //주식 보유수
+                ]);
+                
+                balance.push([
+                    data[0][i][0], // the date
+                    data[0][i][11] //계좌 잔고
+                ]);
+                
+                profit.push([
+                    data[0][i][0], // the date
+                    data[0][i][12] //PROFIT
+                ]);
+                
+                margin.push([
+                    data[0][i][0], // the date
+                    data[0][i][13] //총 자산
+                ]);
+            }
+            var goldencrossdata = data[1];
+            var deadcrossdata = data[2];
+            //var buypositiondata = data[3];
+
+            Highcharts.stockChart('chart_container', {
+                chart: {
+                    animation: Highcharts.svg,
+                },
+                rangeSelector: {
+                    selected: 1
+                },
+                // 마우스 온 이라고 했을때, 툴팁이 분리되서 표출여부
+                tooltip: {
+                    split: false
+                },
+
+                title: {
+                    text: '{{ CODE }}'
+                },
+                yAxis: [
+                    {
+                        labels: {align: 'right',x: -3},
+                        title: {text: 'chart 1'},
+                        height: '50%',
+                        lineWidth: 2
+                    },
+                    {
+                        labels: {align: 'right',x: -3},
+                        title: {text: 'chart1'},
+                        top: '50%',
+                        height: '25%',
+                        offset: 0,
+                        lineWidth: 2,
+                    },
+                    {
+                        labels: {align: 'right',x: -3},
+                        title: {text: 'chart 2'},
+                        top: '75%',
+                        height: '25%',
+                        offset: 0,
+                        lineWidth: 2
+                    },
+                ],
+                
+                series: [
+                    // 캔들스틱
+                    {
+                        type: 'candlestick',
+                        id:'candlestick',
+                        name: 'item',
+                        data: ohlc,
+                        yAxis: 0,
+                    },
+
+                    // 5일 평균선
+                    {name: 'M5',id: 'M5',type: 'spline',data: m5data,color:'#66CC33'},
+                    // 20일 평균선
+                    {name: 'M20',id: 'M20',type: 'spline',data: m20data,color:'#FF3333'},
+                    // 60일 평균선
+                    //{name: 'M60',id: 'M60',type: 'spline',data: m60data,color:'#FF9900'},
+                    // 120일 평균선
+                    //{name: 'M120',id: 'M120',type: 'spline',data: m120data,color:'#9966CC'},
+                    
+                    //{
+                    //    name: '계좌 잔고',
+                    //    id: 'balance',
+                    //    type: 'line',
+                    //    data: balance,
+                    //    yAxis: 1,
+                    //},
+                    
+                    {
+                        name: '총 자산',
+                        id: 'margin',
+                        type: 'line',
+                        data: margin,
+                        yAxis: 1,
+                    },
+                    //{
+                    //    name: 'PROFIT',
+                    //    id: 'profit',
+                    //    type: 'line',
+                    //    data: profit,
+                    //    yAxis: 2,
+                    //},
+                    
+                    //주식 보유 수
+                    {
+                        name: '주식 보유 수',
+                        id: 'trade_count',
+                        type: 'area',
+                        data: trade_count,
+                        yAxis: 2,
+                    },
+                    
+                    
+                    // 골든크로스
+                    {
+                        name: 'golden cross',
+                        color:'#FF0000',
+                        type: 'flags',
+                        data: goldencrossdata,
+                        onSeries: 'M5',
+                        shape: 'squarepin',
+                    },
+                    
+                    // 데드크로스
+                    {
+                        name: 'dead cross',
+                        color:'#0000FF',
+                        type: 'flags',
+                        data: deadcrossdata,
+                        onSeries: 'M5',
+                        shape: 'squarepin',
+                    },
+
+                    // 바이포지션
+                        //{
+                    //    type: 'flags',
+                    //    name: 'Flags on axis',
+                    //    data: buypositiondata,
+                    //    shape: 'squarepin',
+                    //},
+
+
+
+                ]
+            });
+        });
+    </script>
+{% endblock %}

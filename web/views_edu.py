@@ -319,7 +319,6 @@ def costaverage(request):
     })
 @sco
 def realtime(request):
-
     return render(request, 'edu/realtime.html')
 @sco
 def realtime_data(request):
@@ -342,3 +341,248 @@ def realtime_data(request):
 
     data = [datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), random.choice(range(-100,101))]
     return HttpResponse(json.dumps(data), content_type='text/json')
+
+def costaverage_data2(request):
+    # parameter 받기
+    PARAM = dict()
+    PARAM['CODE'] = request.GET['code']
+    PARAM['SDATE_STR'] = request.GET['sdate']
+    PARAM['SDATE_DATETIME'] = datetime.datetime.strptime(PARAM['SDATE_STR'], '%Y-%m-%d')
+    PARAM['EDATE_STR'] = request.GET['edate']
+    PARAM['EDATE_DATETIME'] = datetime.datetime.strptime(PARAM['EDATE_STR'], '%Y-%m-%d')
+
+    # db에서 데이터 가져오기
+    code = Code.objects.get(code=PARAM['CODE'])
+    data = Stock.objects.filter(code=code, date__gte=PARAM['SDATE_DATETIME'], date__lte=PARAM['EDATE_DATETIME']).order_by('date')
+    additional_data = Stock.objects.filter(code=code, date__gte=PARAM['SDATE_DATETIME'] - datetime.timedelta(days=180), date__lte=PARAM['EDATE_DATETIME']).order_by('date')
+
+    # 캔들스틱 데이터
+    return_data = list()
+    for stock in data:
+        return_data.append([
+            int(time.mktime(stock.date.timetuple()) * 1000), #unixtimestamp, microsecond
+            stock.open,
+            stock.high,
+            stock.low,
+            stock.close,
+            stock.adjclose,
+        ])
+
+
+    # 이동평균선 구하기 series 생성
+    moving_average_line_series = Series(
+        data=[stock.adjclose for stock in additional_data],
+        index=[int(time.mktime(stock.date.timetuple()) * 1000) for stock in additional_data],
+    )
+
+    # 5일 이동평균선
+    series = moving_average_line_series.rolling(window=5).mean()
+    for index, date in enumerate([t[0] for t in return_data]):
+        if math.isnan(series[date]):
+            val = None
+        else:
+            val = series[date]
+        return_data[index].append(val)
+    # 20일 이동평균선
+    series = moving_average_line_series.rolling(window=20).mean()
+    for index, date in enumerate([t[0] for t in return_data]):
+        if math.isnan(series[date]):
+            val = None
+        else:
+            val = series[date]
+        return_data[index].append(val)
+    # 60일 이동평균선
+    series = moving_average_line_series.rolling(window=60).mean()
+    for index, date in enumerate([t[0] for t in return_data]):
+        if math.isnan(series[date]):
+            val = None
+        else:
+            val = series[date]
+        return_data[index].append(val)
+    # 120일 이동평균선
+    series = moving_average_line_series.rolling(window=120).mean()
+    for index, date in enumerate([t[0] for t in return_data]):
+        if math.isnan(series[date]):
+            val = None
+        else:
+            val = series[date]
+        return_data[index].append(val)
+
+    # Golden Cross / Dead Cross
+    GOLDENCROSS = []
+    DEADCROSS = []
+    GC_CNT = 0 # Golden Cross 시점을 확인하기 위한 count
+    DC_CNT = 0 # Dead Cross 시점을 확인하기 위한 count
+    for item in return_data:
+        DATE = item[0] # 날짜
+        M5 = item[6] # 5일 이동 평균선
+        M20 = item[7]  # 20일 이동 평균선
+        M60 = item[8]
+        M120 = item[9]
+
+        if M5 > M20: # 단기가 장기보다 높으면 BUY
+            DC_CNT = 0 # Dead cross count reset
+
+            GC_CNT += 1 # Golden cross count add
+            if GC_CNT == 1: # 단기가 장기보다 높아지는 최초시점 확인
+                if len(DEADCROSS): # DC(HOLD) 발생이후 부터 GC 시작
+                    GOLDENCROSS.append({'x': DATE, 'title': 'GC'})
+
+        else: # 단기가 장기보다 낮으면 SELL
+            GC_CNT = 0 # Golden cross count reset
+
+            DC_CNT += 1 #Dead cross count add
+            if DC_CNT == 1: # 단기가 장기보다 낮아지는 최초시점 확인
+                if len(DEADCROSS) == 0: # 최초 DC는 HOLD
+                    DEADCROSS.append({'x': DATE, 'title': 'DC(HOLD)'})
+                else: #HOLD 이후부터 SELL
+                    DEADCROSS.append({'x': DATE, 'title': 'DC(SELL)'})
+
+    # Cost Average
+    BALANCE = float(100000000) # 계좌 잔고
+    BUYRATE = 0.01 # 최대 구매 금액 상한선에 대한 잔고의 비율
+
+    TRADE_COUNT = 0  # 주식 보유 수량
+
+    BUY_FLAG = False # True일때 BUY 가능
+    for index,item in enumerate(return_data):
+        DATE = item[0]  # 날짜
+        ADJCLOSE = item[5]  # 날짜
+        M5 = item[6] # 5일 이동 평균선
+        M20 = item[7] # 20일 이동 평균선
+        M60 = item[8]
+        M120 = item[9]
+
+        if M5 > M20: # 단기가 장기보다 높으면 BUY
+            if BUY_FLAG:
+                BUYCOST = BALANCE * BUYRATE #최대 구매 금액 상한선
+                BUY_COUNT = int(math.floor(BUYCOST / ADJCLOSE)) # 버림을 통해 구매 가능한 주식수를 계산
+                COST = BUY_COUNT * ADJCLOSE # 구매 가능한 주식수에 대한 금액
+                BALANCE -= COST # 구매한 금액만큼 계좌 잔고에서 빼기
+                TRADE_COUNT += BUY_COUNT # 구매한 수량만큼 주식 보유 수량에 더하기
+                PROFIT = TRADE_COUNT * ADJCLOSE #구매한 주식수와 현재 가격을 곱한 금액 / 주식에 투자한 돈
+                output = [1,'BUY ',
+                          '주식보유수:', TRADE_COUNT,
+                          '계좌잔고:', dots(BALANCE),
+                          'PROFIT:', dots(PROFIT),
+                          '총자산:', dots(BALANCE + PROFIT),
+                          ]
+            else:
+                PROFIT = TRADE_COUNT * ADJCLOSE  # 구매한 주식수와 현재 가격을 곱한 금액 / 주식에 투자한 돈
+                output = [2, 'HOLD',
+                          '주식보유수:', TRADE_COUNT,
+                          '계좌잔고:', dots(BALANCE),
+                          'PROFIT:', dots(PROFIT),
+                          '총자산:', dots(BALANCE + PROFIT),
+                          ]
+        else: # 단기가 장기보다 낮으면 SELL
+            BUY_FLAG = True
+            if TRADE_COUNT > 0: # BUY한게 있어야만 SELL을 할수 있음
+                SELL_COUNT = TRADE_COUNT
+                COST = TRADE_COUNT * ADJCLOSE # 판매 금액
+
+                BALANCE += COST  # 판매한 금액만큼 계좌 잔고에 더하기
+                TRADE_COUNT = 0 # 주식 보유 수량 reset
+
+                PROFIT = TRADE_COUNT * ADJCLOSE  # 구매한 주식수와 현재 가격을 곱한 금액 / 주식에 투자한 돈
+                output = [3, 'SELL',
+                          '주식보유수:', TRADE_COUNT,
+                          '계좌잔고:', dots(BALANCE),
+                          'PROFIT:', dots(PROFIT),
+                          '총자산:', dots(BALANCE + PROFIT),
+                          ]
+
+            else:
+                PROFIT = TRADE_COUNT * ADJCLOSE  # 구매한 주식수와 현재 가격을 곱한 금액 / 주식에 투자한 돈
+                output = [4, 'HOLD',
+                          '주식보유수:', TRADE_COUNT,
+                          '계좌잔고:', dots(BALANCE),
+                          'PROFIT:', dots(PROFIT),
+                          '총자산:', dots(BALANCE + PROFIT),
+                          ]
+        pass
+        # 주식 보유수
+        # if TRADE_COUNT == 0:
+        #     return_data[index].append(None)
+        # else:
+        return_data[index].append(TRADE_COUNT)
+
+        return_data[index].append(BALANCE)  # 계좌잔고
+        return_data[index].append(PROFIT)  # PROFIT
+        return_data[index].append(BALANCE + PROFIT)  # 총 자산
+
+        '''
+        [0] = date
+        [1] = open
+        [2] = high
+        [3] = low
+        [4] = close
+        [5] = adjclose
+        [6] = 5일 이동 평균선
+        [7] = 20일 이동 평균선
+        [8] = 60일 이동 평균선
+        [9] = 120일 이동 평균선
+        [10] = 주식 보유수
+        [11] = 계좌 잔고
+        [12] = PROFIT
+        [13] = 총 자산
+        '''
+
+        print ' '.join([str(t) for t in output])
+
+
+
+
+
+
+
+    return HttpResponse(json.dumps([return_data, GOLDENCROSS, DEADCROSS, ]), content_type='text/json')
+
+
+
+
+
+def costaverage2(request):
+    try:
+        CODE = request.GET['code']
+    except KeyError:
+        CODE = '035420.KS' #삼성전자
+
+    try:
+        SDATE_STR = request.GET['sdate']
+        SDATE_DATETIME = datetime.datetime.strptime(SDATE_STR, '%Y-%m-%d')
+    except KeyError:
+        SDATE_DATETIME = datetime.datetime.now() - datetime.timedelta(days=365)
+        SDATE_STR = SDATE_DATETIME.strftime('%Y-%m-%d')
+
+    try:
+        EDATE_STR = request.GET['edate']
+        EDATE_DATETIME = datetime.datetime.strptime(EDATE_STR, '%Y-%m-%d')
+    except KeyError:
+        EDATE_DATETIME = datetime.datetime.now()
+        EDATE_STR = EDATE_DATETIME.strftime('%Y-%m-%d')
+
+    try:#DB에 있으면 PASS
+        code = Code.objects.get(code=CODE)
+    except ObjectDoesNotExist: #없으면 추가
+        code = Code(code=CODE)
+        code.save()
+        DataFrame = pandas_datareader.data.DataReader(CODE, "yahoo", '1970-01-01', timezone.now())
+        for index in DataFrame['Open'].index:
+            Stock(code=code,
+                  date=index,
+                  open=DataFrame['Open'][index],
+                  high=DataFrame['High'][index],
+                  low=DataFrame['Low'][index],
+                  close=DataFrame['Close'][index],
+                  adjclose=DataFrame['Adj Close'][index],
+                  volume=DataFrame['Volume'][index]
+                  ).save()
+
+    return render(request, 'edu/costaverage2.html',{
+        'CODE':CODE,
+        'SDATE': SDATE_STR,
+        'EDATE': EDATE_STR,
+        # 'GLODENCROSS':glod_cross,
+        # 'DEADCROSS':dead_cross,
+    })
