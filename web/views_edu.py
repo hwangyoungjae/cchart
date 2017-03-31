@@ -170,7 +170,7 @@ def costaverage_data(request):
             if MO5 < MO20:
                 START = True
         ADSCLOSE = series[DATE]
-        # print DATE,
+        # print(DATE,)
         if MO5 > MO20:
             ''' BUY 구간 '''
             BCOUNT += 1
@@ -178,9 +178,9 @@ def costaverage_data(request):
             if START:
                 if BCOUNT == 1:
                     GOLDENCROSS.append({'x': DATE, 'title': 'GC'})
-                    # print BCOUNT, 'BUY(a)',
+                    # print(BCOUNT, 'BUY(a)',)
                 # else:
-                #     print BCOUNT,'BUY(b)',
+                #     # print(BCOUNT,'BUY(b)',)
                 # 구매 계산하기
                 BUY_LOTS = int(math.floor(BUYCOST / ADSCLOSE))  # 구매 가능한 계좌수 / 버림
                 REQUIRED_MARGIN = BUY_LOTS * ADSCLOSE  # 구매에 필요한 금액
@@ -191,21 +191,21 @@ def costaverage_data(request):
 
                 A = TRADE_COUNT * ADSCLOSE  # 그동한 구매한 주식을 판매한 금액
                 B = USED_MARGIN/TRADE_COUNT #매입 평균 단가
-                # print '/ 적립액:',dots(REQUIRED_MARGIN),
-                # print '/ 주가:', dots(ADSCLOSE),
-                # print '/ 구매좌수:', BUY_LOTS,
-                # print '/ 누적좌수:', TRADE_COUNT,
-                # print '/ 누적적립액:', dots(USED_MARGIN),
-                # # print '/ 매입평균단가:',dots(B),
-                # print '/ 판매시 잔액:',dots(BALANCE + A),
+                # print('/ 적립액:',dots(REQUIRED_MARGIN))
+                # print('/ 주가:', dots(ADSCLOSE),)
+                # print('/ 구매좌수:', BUY_LOTS,)
+                # print('/ 누적좌수:', TRADE_COUNT,)
+                # print('/ 누적적립액:', dots(USED_MARGIN),)
+                # print('/ 매입평균단가:',dots(B),)
+                # print('/ 판매시 잔액:',dots(BALANCE + A),)
                 # print
                 ALIST.append((DATE, BALANCE + A))
                 BLIST.append((DATE, TRADE_COUNT))
                 BUYPOSITION.append({'x': DATE, 'title': 'buy'})
             else:
-                # print BCOUNT, 'HOLD(c)',
-                # print '/ 누적좌수:', TRADE_COUNT,
-                # print '/ 잔액:',dots(BALANCE),
+                # print(BCOUNT, 'HOLD(c)',)
+                # print('/ 누적좌수:', TRADE_COUNT,)
+                # print('/ 잔액:',dots(BALANCE),)
                 # print
                 ALIST.append((DATE, BALANCE))
                 BLIST.append((DATE, TRADE_COUNT))
@@ -218,14 +218,14 @@ def costaverage_data(request):
                     DEADCROSS.append({'x': DATE, 'title': 'DC(SELL)'})
                     A = TRADE_COUNT * ADSCLOSE #구동한 구매한 주식을 판매한 금액
 
-                    # print BCOUNT, 'SELL(d)',
-                    # print '/ 판매액:', dots(A),
-                    # print '/ 주가:', dots(ADSCLOSE),
-                    # print '/ 판매좌수:', TRADE_COUNT,
-                    # print '/ 누적좌수:', 0,
-                    # print '/ 누적적립액:', dots(USED_MARGIN),
-                    # # print '/ 매입평균단가:',dots(B),
-                    # print '/ 판매시 잔액:', dots(BALANCE + A),
+                    # print(BCOUNT, 'SELL(d)',)
+                    # print('/ 판매액:', dots(A),)
+                    # print('/ 주가:', dots(ADSCLOSE),)
+                    # print('/ 판매좌수:', TRADE_COUNT,)
+                    # print('/ 누적좌수:', 0,)
+                    # print('/ 누적적립액:', dots(USED_MARGIN),)
+                    # # print('/ 매입평균단가:',dots(B),)
+                    # print('/ 판매시 잔액:', dots(BALANCE + A),)
                     # print
                     ALIST.append((DATE, BALANCE + A))
                     BLIST.append((DATE, TRADE_COUNT))
@@ -234,9 +234,9 @@ def costaverage_data(request):
                     TRADE_COUNT = 0
 
                 else:
-                    # print BCOUNT, 'HOLD(e)',
-                    # print '/ 누적좌수:', TRADE_COUNT,
-                    # print '/ 잔액:', dots(BALANCE),
+                    # print(BCOUNT, 'HOLD(e)',)
+                    # print('/ 누적좌수:', TRADE_COUNT,)
+                    # print('/ 잔액:', dots(BALANCE),)
                     # print
                     ALIST.append((DATE, BALANCE))
                     BLIST.append((DATE, TRADE_COUNT))
@@ -245,14 +245,14 @@ def costaverage_data(request):
                     START = True
                     SELL_FLAG = False
                     DEADCROSS.append({'x': DATE, 'title': 'DC(HOLD)'})
-                    # print BCOUNT, 'HOLD(f)', 'DC',
-                    # print '/ 누적좌수:', TRADE_COUNT,
-                    # print '/ 잔액:', dots(BALANCE),
-                    # print
+                    # print(BCOUNT, 'HOLD(f)', 'DC',)
+                    # print('/ 누적좌수:', TRADE_COUNT,)
+                    # print('/ 잔액:', dots(BALANCE),)
+
                     ALIST.append((DATE, BALANCE))
                     BLIST.append((DATE, TRADE_COUNT))
                 else:
-                    # print BCOUNT, 'HOLD(g)'
+                    # print(BCOUNT, 'HOLD(g)')
                     ALIST.append((DATE, BALANCE))
                     BLIST.append((DATE, TRADE_COUNT))
 
@@ -260,7 +260,7 @@ def costaverage_data(request):
     A_series = Series(index=[t[0] for t in ALIST], data=[t[1] for t in ALIST])
     B_series = Series(index=[t[0] for t in BLIST], data=[t[1] for t in BLIST])
     for index, date in enumerate([t[0] for t in return_data]):
-        # print index, date, series[date]
+        # print(index, date, series[date])
         return_data[index].append(A_series[date]) # 계좌 잔고
         if B_series[date]:
             return_data[index].append(B_series[date]) # 주식 보유 수량
@@ -294,7 +294,7 @@ def costaverage(request):
 
     try:#DB에 있으면 PASS
         code = Code.objects.get(code=CODE)
-        print Stock.objects.filter(code=code)
+        # print(Stock.objects.filter(code=code))
     except ObjectDoesNotExist: #없으면 추가
         code = Code(code=CODE)
         code.save()
@@ -528,7 +528,7 @@ def costaverage_data2(request):
         [13] = 총 자산
         '''
 
-        print ' '.join([str(t) for t in output])
+        print(' '.join([str(t) for t in output]))
 
 
 
