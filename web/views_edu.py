@@ -6,6 +6,9 @@ from django.utils import timezone
 from .models import *
 import random, json, datetime, time, math, locale
 import pandas_datareader.data
+from web.Kiwoom import Kiwoom, ParameterTypeError, ParameterValueError, KiwoomProcessingError, KiwoomConnectError
+import sys
+from PyQt5.QtWidgets import QApplication
 
 
 class sco:
