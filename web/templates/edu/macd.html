@@ -3,7 +3,7 @@
 {% block extendjs %}<script type="text/javascript" src="/static/js/highstock.js"></script>{% endblock %}
 {% block content %}
     <div>
-        <form method="GET" action="/edu/macd">
+        <form method="GET" action="">
             <label>종목코드 : <input type="text" name="code" value="{{ CODE }}"></label>
             <label>sdate : <input type="date" name="sdate" value="{{ SDATE }}"></label>
             <label>edate : <input type="date" name="edate" value="{{ EDATE }}"></label>
@@ -19,16 +19,19 @@
             //[3] = low
             //[4] = close
             //[5] = adj close
-            //[6] = singal(9일)
-            //[7] = 단기 이동 평균선(12일)
-            //[8] = 장기 이동 평균선(26일)
-            //[9] = MACD
+            
+            //[6] = 단기지수이동평균(12)
+            //[7] = 장기지수이동평균(26)
+            //[8] = 지수이동평균(9)
+            //[9] = macd
+            //[10] = signal
             
             var ohlc = []; //캔들챠트
-            var m9data = []; // signal
-            var m12data = []; // 5일 이동평균선
-            var m26data = []; // 20일 이동평균선
-            var macd = []; // macd
+            var ema12 = [];
+            var ema26 = [];
+            var ema9 = [];
+            var macd = [];
+            var signal = [];
             
             var i = 0;
             var dataLength = data[0].length;
@@ -42,29 +45,31 @@
                     data[0][i][4], // close
                 ]);
 
-                m9data.push([
+                ema12.push([
                     data[0][i][0], // the date
-                    data[0][i][6] // the 12days moving average
+                    data[0][i][6]  // 단기지수이동평균(12)
                 ]);
                 
-                m12data.push([
+                ema26.push([
                     data[0][i][0], // the date
-                    data[0][i][7] // the 12days moving average
+                    data[0][i][7] // 장기지수이동평균(26)
                 ]);
-
-                m26data.push([
-                    data[0][i][0], // the date
-                    data[0][i][8] // the 26days moving average
-                ]);
+                
+                //ema9.push([
+                //    data[0][i][0], // the date
+                //    data[0][i][8] // 지수이동평균(9)
+                //]);
                 
                 macd.push([
                     data[0][i][0], // the date
-                    data[0][i][9] // macd
+                    data[0][i][9]  // macd
+                ]);
+                
+                signal.push([
+                    data[0][i][0], // the date
+                    data[0][i][10]  // signal
                 ]);
             }
-            //var goldencrossdata = data[1];
-            //var deadcrossdata = data[2];
-            //var buypositiondata = data[3];
 
             Highcharts.stockChart('chart_container', {
                 chart: {
@@ -125,18 +130,19 @@
                         data: ohlc,
                         yAxis: 0,
                     },
-                    //{name: 'M9',id: 'M9',type: 'spline',data: m9data,color:'#FF0000'}, // 단기 이평선
-                    {name: 'M12',id: 'M12',type: 'spline',data: m12data,color:'#1DDB16'}, // 단기 이평선
-                    {name: 'M26',id: 'M26',type: 'spline',data: m26data,color:'#0100FF'}, // 장기 이평선
+                    {name: 'EMA(12)',id: 'ema12',type: 'line',data: ema12},
+                    {name: 'EMA(26)',id: 'ema26',type: 'line',data: ema26},
+                    //{name: 'EMA(9)',id: 'ema9',type: 'line',data: ema9},
                     
                     // macd
                     {
                         name: 'macd',
                         id: 'macd',
-                        type: 'line',
+                        type: 'column',
                         data: macd,
                         yAxis: 1,
                     },
+                    {name: 'signal',id: 'signal',type: 'line',data: signal, yAxis: 1},
                 ]
             });
         });

@@ -4,6 +4,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from pandas import Series, DataFrame
 from django.utils import timezone
 from .models import *
+import numpy as np
 import random, json, datetime, time, math, locale
 import pandas_datareader.data
 
@@ -42,6 +43,28 @@ class sco:
 def dots(numeric):
     locale.setlocale(locale.LC_ALL,'')
     return locale.format('%3f',int(numeric),1).rsplit('.',1)[0]
+
+def sma(dataset, window):
+    weight = np.repeat(1,window)
+    a = (np.convolve(dataset,weight,'valid') / weight.sum()).tolist()
+    [a.insert(0,np.nan) for i in range(window-1)]
+    return a
+
+def wma(dataset, window):
+    weight = np.linspace(1, 0, window+1)[:-1]
+    a = (np.convolve(dataset,weight,'valid') / weight.sum()).tolist()
+    [a.insert(0,np.nan) for i in range(window-1)]
+    return a
+
+def ema(dataset, window):
+    weight = float(2) / (window + 1)
+    result = []
+    for index,value in enumerate(dataset):
+        if not result:
+            result.append(value)
+        else:
+            result.append((value * weight) + (result[-1] * (1-weight)))
+    return result
 
 # Create your views here.
 # def compound_data(request):
@@ -576,6 +599,100 @@ def costaverage2(request):
         # 'DEADCROSS':dead_cross,
     })
 
+
+def movingaverage_page(request):
+    try:
+        CODE = request.GET['code']
+    except KeyError:
+        CODE = '035420.KS' #삼성전자
+    
+    try:
+        PERIOD = int(request.GET['period'])
+    except KeyError:
+        PERIOD = 12
+        
+    try:
+        SDATE_STR = request.GET['sdate']
+        SDATE_DATETIME = datetime.datetime.strptime(SDATE_STR, '%Y-%m-%d')
+    except KeyError:
+        SDATE_DATETIME = datetime.datetime.now() - datetime.timedelta(days=365)
+        SDATE_STR = SDATE_DATETIME.strftime('%Y-%m-%d')
+        
+    try:
+        EDATE_STR = request.GET['edate']
+        EDATE_DATETIME = datetime.datetime.strptime(EDATE_STR, '%Y-%m-%d')
+    except KeyError:
+        EDATE_DATETIME = datetime.datetime.now()
+        EDATE_STR = EDATE_DATETIME.strftime('%Y-%m-%d')
+    
+    try:#DB에 있으면 PASS
+        code = Code.objects.get(code=CODE)
+    except ObjectDoesNotExist: #없으면 추가
+        code = Code(code=CODE)
+        code.save()
+        DataFrame = pandas_datareader.data.DataReader(CODE, "yahoo", '1970-01-01', timezone.now())
+        for index in DataFrame['Open'].index:
+            Stock(code=code,
+                  date=index,
+                  open=DataFrame['Open'][index],
+                  high=DataFrame['High'][index],
+                  low=DataFrame['Low'][index],
+                  close=DataFrame['Close'][index],
+                  adjclose=DataFrame['Adj Close'][index],
+                  volume=DataFrame['Volume'][index]
+                  ).save()
+    respon = render(request, 'edu/movingaverage.html',{
+        'CODE':CODE,
+        'PERIOD': PERIOD,
+        'SDATE': SDATE_STR,
+        'EDATE': EDATE_STR,
+    })
+    return respon
+
+def movingaverage_data(request):
+    # parameter 받기
+    PARAM = dict()
+    PARAM['CODE'] = request.GET['code']
+    PARAM['PERIOD'] = int(request.GET['period'])
+    PARAM['SDATE_STR'] = request.GET['sdate']
+    PARAM['SDATE_DATETIME'] = datetime.datetime.strptime(PARAM['SDATE_STR'], '%Y-%m-%d')
+    PARAM['EDATE_STR'] = request.GET['edate']
+    PARAM['EDATE_DATETIME'] = datetime.datetime.strptime(PARAM['EDATE_STR'], '%Y-%m-%d')
+
+    # db에서 데이터 가져오기
+    code = Code.objects.get(code=PARAM['CODE'])
+    data = Stock.objects.filter(code=code, date__gte=PARAM['SDATE_DATETIME'], date__lte=PARAM['EDATE_DATETIME']).order_by('date')
+    additional_data = Stock.objects.filter(code=code, date__gte=PARAM['SDATE_DATETIME'] - datetime.timedelta(days=26), date__lte=PARAM['EDATE_DATETIME']).order_by('date')
+
+    # 캔들스틱 데이터
+    return_data = list()
+    for stock in data:
+        return_data.append([
+            int(time.mktime(stock.date.timetuple()) * 1000), #unixtimestamp, microsecond
+            stock.open,
+            stock.high,
+            stock.low,
+            stock.close,
+            stock.adjclose,
+        ])
+
+    # SMA / Simple Moving Average
+    for index,val in enumerate(sma([stock.adjclose for stock in data],PARAM['PERIOD'])):
+        if np.isnan(val):val = None
+        return_data[index].append(val)
+    
+    #WMA / Weighted Moving Average
+    for index,val in enumerate(wma([stock.adjclose for stock in data],PARAM['PERIOD'])):
+        if np.isnan(val):val = None
+        return_data[index].append(val)
+    
+    #EMA / Exponential Moving Average
+    for index,val in enumerate(ema([stock.adjclose for stock in data],PARAM['PERIOD'])):
+        if np.isnan(val):val = None
+        return_data[index].append(val)
+        
+    return HttpResponse(json.dumps([return_data, ]), content_type='text/json')
+
 def macd_page(request):
     try:
         CODE = request.GET['code']
@@ -616,8 +733,6 @@ def macd_page(request):
         'CODE':CODE,
         'SDATE': SDATE_STR,
         'EDATE': EDATE_STR,
-        # 'GLODENCROSS':glod_cross,
-        # 'DEADCROSS':dead_cross,
     })
     return respon
 def macd_data(request):
@@ -645,46 +760,36 @@ def macd_data(request):
             stock.close,
             stock.adjclose,
         ])
-
-    # 이동평균선 구하기 series 생성
-    moving_average_line_series = Series(
-        data=[stock.adjclose for stock in additional_data],
-        index=[int(time.mktime(stock.date.timetuple()) * 1000) for stock in additional_data],
-    )
-
-    # 9일 이동평균선
-    series = moving_average_line_series.rolling(window=9).mean()
-    for index, date in enumerate([t[0] for t in return_data]):
-        if math.isnan(series[date]):
-            val = None
-        else:
-            val = series[date]
-        return_data[index].append(val)
-
-    # 12일 이동평균선
-    series = moving_average_line_series.rolling(window=12).mean()
-    for index, date in enumerate([t[0] for t in return_data]):
-        if math.isnan(series[date]):
-            val = None
-        else:
-            val = series[date]
-        return_data[index].append(val)
     
-    # 26일 이동평균선
-    series = moving_average_line_series.rolling(window=26).mean()
-    for index, date in enumerate([t[0] for t in return_data]):
-        if math.isnan(series[date]):
-            val = None
-        else:
-            val = series[date]
+    #EMA / Exponential Moving Average
+    ema12 = ema([stock.adjclose for stock in data],12)
+    for index,val in enumerate(ema12):
+        if np.isnan(val):val = None
         return_data[index].append(val)
         
-    for row in return_data:
-        if row[6] == None or row[7] == None:
-            row.append(None)
-            # print(None)
-        else:
-            row.append(row[6] - row[7])
-            # print(row[6] - row[7])
+    #EMA / Exponential Moving Average
+    ema26 = ema([stock.adjclose for stock in data],26)
+    for index,val in enumerate(ema26):
+        if np.isnan(val):val = None
+        return_data[index].append(val)
+        
+    #EMA / Exponential Moving Average
+    ema9 = ema([stock.adjclose for stock in data],9)
+    for index,val in enumerate(ema9):
+        if np.isnan(val):val = None
+        return_data[index].append(val)
+    
+    #MACD
+    macd = list()
+    for index in range(len(ema12)):
+        val = ema12[index] - ema26[index]
+        macd.append(val)
+        return_data[index].append(val)
+        
+    #signal
+    signal = ema(macd,9)
+    for index,val in enumerate(signal):
+        if np.isnan(val):val = None
+        return_data[index].append(val)
         
     return HttpResponse(json.dumps([return_data, ]), content_type='text/json')

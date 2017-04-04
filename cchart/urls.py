@@ -38,6 +38,9 @@ urlpatterns = [
 
     # url(r'^test$', web.views.MyFormView.as_view()),
     # url(r'^ttt$', web.views.ttt),
+    # moving average
+    url(r'^edu/movingaverage$', web.views_edu.movingaverage_page),
+    url(r'^edu/movingaverage.data$', web.views_edu.movingaverage_data),
     
     url(r'^edu/macd$', web.views_edu.macd_page),
     url(r'^edu/macd.data$', web.views_edu.macd_data),

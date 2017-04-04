@@ -1,0 +1,101 @@
+{% extends 'base/base.html' %}
+{% block title %}MACD 나도해보자{% endblock %}
+{% block extendjs %}<script type="text/javascript" src="/static/js/highstock.js"></script>{% endblock %}
+{% block content %}
+    <div>
+        <form method="GET" action="">
+            <label>종목코드 : <input type="text" name="code" value="{{ CODE }}"></label>
+            <label>period : <input type="period" name="period" value="{{ PERIOD }}"></label>
+            <label>sdate : <input type="date" name="sdate" value="{{ SDATE }}"></label>
+            <label>edate : <input type="date" name="edate" value="{{ EDATE }}"></label>
+            
+            
+            <input type="submit">
+        </form>
+    </div>
+    <div id="chart_container" style="min-width: 310px; height: 800px; margin: 0 auto"></div>
+    <script type="text/javascript">
+        $.getJSON('/edu/movingaverage.data?code={{ CODE }}&sdate={{ SDATE }}&edate={{ EDATE }}&period={{ PERIOD }}', function (data) {
+            //[0] = date
+            //[1] = open
+            //[2] = high
+            //[3] = low
+            //[4] = close
+            //[5] = adj close
+            //[6] = Simple Moving Average
+            //[7] = Weighted Moving Average
+            //[8] = Exponential Moving Average
+            
+            var ohlc = []; //캔들챠트
+            var sma = []; // Simple Moving Average
+            var wma = []; // Weighted Moving Average
+            var ema = []; // Exponential Moving Average
+            
+            var i = 0;
+            var dataLength = data[0].length;
+            
+            for (i; i < dataLength; i += 1) {
+                ohlc.push([
+                    data[0][i][0], // the date
+                    data[0][i][1], // open
+                    data[0][i][2], // high
+                    data[0][i][3], // low
+                    data[0][i][4], // close
+                ]);
+
+                sma.push([
+                    data[0][i][0], // the date
+                    data[0][i][6] // Simple Moving Average
+                ]);
+                
+                wma.push([
+                    data[0][i][0], // the date
+                    data[0][i][7] // Weighted Moving Average
+                ]);
+                
+                ema.push([
+                    data[0][i][0], // the date
+                    data[0][i][8] // Exponential Moving Average
+                ]);
+            }
+
+            Highcharts.stockChart('chart_container', {
+                chart: {
+                    animation: Highcharts.svg,
+                },
+                rangeSelector: {
+                    selected: 1
+                },
+                // 마우스 온 이라고 했을때, 툴팁이 분리되서 표출여부
+                tooltip: {
+                    split: false
+                },
+                
+                title: {
+                    text: '{{ CODE }}'
+                },
+                yAxis: [
+                    {
+                        labels: {align: 'right',x: -3},
+                        title: {text: 'chart 1'},
+                        height: '100%',
+                        lineWidth: 2
+                    },
+                ],
+                series: [
+                    // 캔들스틱
+                    {
+                        type: 'candlestick',
+                        id:'candlestick',
+                        name: 'item',
+                        data: ohlc,
+                        yAxis: 0,
+                    },
+                    {name: 'Simple Moving Average',id: 'sma',type: 'line',data: sma,color:'#FF0000'}, // Simple Moving Average
+                    {name: 'Weighted Moving Average',id: 'wma',type: 'line',data: wma,color:'#00FF00'}, // Weighted Moving Average
+                    {name: 'Exponential Moving Average',id: 'ema',type: 'line',data: ema,color:'#0000FF'}, // Exponential Moving Average
+                ]
+            });
+        });
+    </script>
+{% endblock %}

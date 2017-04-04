@@ -1,63 +1,31 @@
 # -*- encoding:utf8 -*-
-import os,sys,time,datetime
-import pandas_datareader.data
-from pandas import Series, DataFrame
-import pandas
-import json, math, MySQLdb, random
+import os,sys,time,MySQLdb
+from pandas import Series
+def cursor2dict(cursor,values,wrap_func=None):
+    if values:
+        fieldnames=[t[0] for t in cursor.description]
+        if type(values[0]) == tuple:#fetchall
+            RESULT=list()
+            for row in values:
+                returnItem=dict()
+                for i in range(len(fieldnames)):
+                    if wrap_func:returnItem[fieldnames[i]]=wrap_func(row[i])
+                    else:returnItem[fieldnames[i]]=row[i]
+                RESULT.append(returnItem)
+        else:#fetchone
+            RESULT=dict()
+            for i in range(len(fieldnames)):
+                if wrap_func:RESULT[fieldnames[i]]=wrap_func(values[i])
+                else:RESULT[fieldnames[i]]=values[i]
+        return RESULT
+    else:
+        return values
 
+con = MySQLdb.connect('10.32.8.181', 'cchart', 'cchart', 'cchart')
+cur = con.cursor()
+cur.execute('SELECT * FROM web_stock WHERE code_id=%s;',('035420.KS',))
+data = cursor2dict(cur,cur.fetchall())
 
-from pandas import Series, DataFrame
-a = Series(list())
-for date,data in [['2015-01-01',123],['2015-01-02',132],['2015-01-03',321],]:
-
-
-
-
-# cnt = 100
-#
-# daeshin = {
-#     'open':  [random.choice(range(10000,15000)) for t in range(cnt)],
-#     'high':  [random.choice(range(10000,15000)) for t in range(cnt)],
-#     'low' :  [random.choice(range(10000,15000)) for t in range(cnt)],
-#     'close': [random.choice(range(10000,15000)) for t in range(cnt)],
-# }
-#
-# index = pandas.date_range('20160101',periods=len(daeshin['open']))
-#
-#
-# daeshin_day = DataFrame(data=daeshin,index=index)
-# import matplotlib.pyplot as plt
-# daeshin_day.plot()
-# plt.show()
-
-
-
-# print(daeshin_day)
-#
-# date = ['16.02.29', '16.02.26', '16.02.25', '16.02.24', '16.02.23']
-# daeshin_day = DataFrame(daeshin, columns=['open', 'high', 'low', 'close'], index=date)
-# print daeshin_day
-
-
-# con = MySQLdb.connect('192.168.0.15','root','Admin2013!','cchart')
-# cur = con.cursor()
-#
-# cur.execute('SELECT * FROM web_code;')
-# print cur._executed
-# for row in cur.fetchall():
-#     CODE, = row
-#     cur.execute('SELECT COUNT(1) FROM web_stock WHERE code_id=%s;',(CODE,))
-#     print cur._executed
-#     if not cur.fetchone()[0]:
-#         cur.execute('DELETE FROM web_code WHERE code=%s;',(CODE,))
-#         print cur._executed
-# con.commit()
-# con.close()
-
-
-
-
-
-
-
-
+moving_average_line_series = Series(
+        data=[t['adjclose'] for t in data],
+        index=[t['date'] for t in data],)
