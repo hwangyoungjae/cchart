@@ -294,7 +294,7 @@ def costaverage(request):
 
     try:#DB에 있으면 PASS
         code = Code.objects.get(code=CODE)
-        print Stock.objects.filter(code=code)
+        print(Stock.objects.filter(code=code))
     except ObjectDoesNotExist: #없으면 추가
         code = Code(code=CODE)
         code.save()
@@ -529,18 +529,7 @@ def costaverage_data2(request):
         '''
 
         print ' '.join([str(t) for t in output])
-
-
-
-
-
-
-
     return HttpResponse(json.dumps([return_data, GOLDENCROSS, DEADCROSS, ]), content_type='text/json')
-
-
-
-
 
 def costaverage2(request):
     try:
@@ -586,3 +575,116 @@ def costaverage2(request):
         # 'GLODENCROSS':glod_cross,
         # 'DEADCROSS':dead_cross,
     })
+
+def macd_page(request):
+    try:
+        CODE = request.GET['code']
+    except KeyError:
+        CODE = '035420.KS' #삼성전자
+        
+    try:
+        SDATE_STR = request.GET['sdate']
+        SDATE_DATETIME = datetime.datetime.strptime(SDATE_STR, '%Y-%m-%d')
+    except KeyError:
+        SDATE_DATETIME = datetime.datetime.now() - datetime.timedelta(days=365)
+        SDATE_STR = SDATE_DATETIME.strftime('%Y-%m-%d')
+        
+    try:
+        EDATE_STR = request.GET['edate']
+        EDATE_DATETIME = datetime.datetime.strptime(EDATE_STR, '%Y-%m-%d')
+    except KeyError:
+        EDATE_DATETIME = datetime.datetime.now()
+        EDATE_STR = EDATE_DATETIME.strftime('%Y-%m-%d')
+    
+    try:#DB에 있으면 PASS
+        code = Code.objects.get(code=CODE)
+    except ObjectDoesNotExist: #없으면 추가
+        code = Code(code=CODE)
+        code.save()
+        DataFrame = pandas_datareader.data.DataReader(CODE, "yahoo", '1970-01-01', timezone.now())
+        for index in DataFrame['Open'].index:
+            Stock(code=code,
+                  date=index,
+                  open=DataFrame['Open'][index],
+                  high=DataFrame['High'][index],
+                  low=DataFrame['Low'][index],
+                  close=DataFrame['Close'][index],
+                  adjclose=DataFrame['Adj Close'][index],
+                  volume=DataFrame['Volume'][index]
+                  ).save()
+    respon = render(request, 'edu/macd.html',{
+        'CODE':CODE,
+        'SDATE': SDATE_STR,
+        'EDATE': EDATE_STR,
+        # 'GLODENCROSS':glod_cross,
+        # 'DEADCROSS':dead_cross,
+    })
+    return respon
+def macd_data(request):
+        # parameter 받기
+    PARAM = dict()
+    PARAM['CODE'] = request.GET['code']
+    PARAM['SDATE_STR'] = request.GET['sdate']
+    PARAM['SDATE_DATETIME'] = datetime.datetime.strptime(PARAM['SDATE_STR'], '%Y-%m-%d')
+    PARAM['EDATE_STR'] = request.GET['edate']
+    PARAM['EDATE_DATETIME'] = datetime.datetime.strptime(PARAM['EDATE_STR'], '%Y-%m-%d')
+
+    # db에서 데이터 가져오기
+    code = Code.objects.get(code=PARAM['CODE'])
+    data = Stock.objects.filter(code=code, date__gte=PARAM['SDATE_DATETIME'], date__lte=PARAM['EDATE_DATETIME']).order_by('date')
+    additional_data = Stock.objects.filter(code=code, date__gte=PARAM['SDATE_DATETIME'] - datetime.timedelta(days=26), date__lte=PARAM['EDATE_DATETIME']).order_by('date')
+
+    # 캔들스틱 데이터
+    return_data = list()
+    for stock in data:
+        return_data.append([
+            int(time.mktime(stock.date.timetuple()) * 1000), #unixtimestamp, microsecond
+            stock.open,
+            stock.high,
+            stock.low,
+            stock.close,
+            stock.adjclose,
+        ])
+
+    # 이동평균선 구하기 series 생성
+    moving_average_line_series = Series(
+        data=[stock.adjclose for stock in additional_data],
+        index=[int(time.mktime(stock.date.timetuple()) * 1000) for stock in additional_data],
+    )
+
+    # 9일 이동평균선
+    series = moving_average_line_series.rolling(window=9).mean()
+    for index, date in enumerate([t[0] for t in return_data]):
+        if math.isnan(series[date]):
+            val = None
+        else:
+            val = series[date]
+        return_data[index].append(val)
+
+    # 12일 이동평균선
+    series = moving_average_line_series.rolling(window=12).mean()
+    for index, date in enumerate([t[0] for t in return_data]):
+        if math.isnan(series[date]):
+            val = None
+        else:
+            val = series[date]
+        return_data[index].append(val)
+    
+    # 26일 이동평균선
+    series = moving_average_line_series.rolling(window=26).mean()
+    for index, date in enumerate([t[0] for t in return_data]):
+        if math.isnan(series[date]):
+            val = None
+        else:
+            val = series[date]
+        return_data[index].append(val)
+        
+    for row in return_data:
+        if row[6] == None or row[7] == None:
+            row.append(None)
+            # print(None)
+        else:
+            row.append(row[6] - row[7])
+            # print(row[6] - row[7])
+        
+    return HttpResponse(json.dumps([return_data, ]), content_type='text/json')

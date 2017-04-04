@@ -1,23 +1,20 @@
 <!DOCTYPE html>
-{% load global %}
 <html>
     <head>
         <title>{% block title %}{% endblock %}</title>
-        <style type="text/css">
-        {% include 'base/style.css' %}
-        </style>
-
         <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         {% block extendjs %}{% endblock %}
-        <script type="text/javascript" src="{% URL %}/static/js/exporting.js{% ENDURL %}"></script>
-        <script type="text/javascript" src="{% URL %}/static/js/data.js{% ENDURL %}"></script>
+        <script type="text/javascript" src="/static/js/exporting.js"></script>
+        <script type="text/javascript" src="/static/js/data.js"></script>
+        <link href="/static/style.css" rel="stylesheet">
     </head>
 <body>
     <div class="menu">
-        <a href="{% BASEURL %}">HOME</a>
-        <a href="{% URL %}/edu/compound{% ENDURL %}">복리의법칙</a>
-        <a href="{% URL %}/edu/costaverage2{% ENDURL %}">코스트에버리지</a>
-        <a href="{% URL %}/edu/realtime{% ENDURL %}">리얼타임</a>
+        <a href="/">HOME</a>
+        <a href="/edu/compound">복리의법칙</a>
+        <a href="/edu/costaverage2">코스트에버리지</a>
+        <a href="/edu/realtime">리얼타임</a>
+        <a href="/edu/macd">macd</a>
     </div>
     {% block content %}{% endblock %}
 </body>

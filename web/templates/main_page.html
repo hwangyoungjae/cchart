@@ -1,6 +1,6 @@
 {% extends 'base/base.html' %}
 {% load global %}
-{% block title %}나도해보자{% endblock %}
+{% block title %}나도해보자 | {{ user }}{% endblock %}
 {% block content %}
-{{ user }}
+<p>{{ output }}</p>
 {% endblock %}

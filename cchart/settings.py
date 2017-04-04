@@ -77,14 +77,13 @@ WSGI_APPLICATION = 'cchart.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': 'localhost',
+        'HOST': '10.32.8.181',
         'USER': 'cchart',
         'PASSWORD': 'cchart',
         'NAME': 'cchart',
         'PORT': 3306,
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.10/ref/settings/#auth-password-validators

@@ -22,18 +22,7 @@ import web.views_edu
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', web.views.main_page),
-
-    url(r'^test$', web.views.test.as_view()),
-    url(r'^test_test$', web.views.test_page),
-
-    url(r'^request$', web.views.request_page),
-    url(r'^request.meta$', web.views.request_meta_page),
-
-
-
-
-
-
+    
     url(r'^edu/compound.data$', web.views_edu.compound_data),
     url(r'^edu/compound$', web.views_edu.compound),
 
@@ -49,7 +38,8 @@ urlpatterns = [
 
     # url(r'^test$', web.views.MyFormView.as_view()),
     # url(r'^ttt$', web.views.ttt),
-
-
-
+    
+    url(r'^edu/macd$', web.views_edu.macd_page),
+    url(r'^edu/macd.data$', web.views_edu.macd_data),
+    
 ]

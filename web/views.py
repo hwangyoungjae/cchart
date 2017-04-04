@@ -50,27 +50,6 @@ class sco:
 
 @sco
 def main_page(request):
-    response = render(request,'main_page.html')
+    output = request.META['REMOTE_ADDR'] + '|' + request.META['HTTP_USER_AGENT']
+    response = render(request,'main_page.html',{'output':output})
     return response
-
-@sco
-def request_page(request):
-    data = list()
-    for key in dir(request):
-        data.append((key,getattr(request,key)))
-    return render(request, 'request_page.html', {'data':data})
-@sco
-def request_meta_page(request):
-    data = list()
-    for k,v in request.META.items():
-        data.append((k,v))
-    return render(request, 'request_page.html', {'data': data})
-@sco
-def test_page(request):
-    return HttpResponse('test_page')
-
-class test(View_csrf_exempt):
-    def get(self, request):
-        return HttpResponse(str(request.method))
-    def post(self, request):
-        return self.get(request)
