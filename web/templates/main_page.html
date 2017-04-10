@@ -1,6 +1,23 @@
 {% extends 'base/base.html' %}
 {% load global %}
 {% block title %}나도해보자 | {{ user }}{% endblock %}
+{% block extendjs %}<script type="text/javascript" src="/static/js/highcharts.js"></script>{% endblock %}
 {% block content %}
 <p>{{ output }}</p>
+<div>
+    <a href="?graph=sin">sin</a>
+    <a href="?graph=sigmoid">sigmoid</a>
+    <a href="?graph=relu">ReLU</a>
+    <a href="?graph=leakyrelu">Leaky_ReLU</a>
+    <a href="?graph=exp">exp</a>
+    <a href="?graph=log">log</a>
+    <a href="?graph=test">test</a>
+
+</div>
+<div id="c_container" style="min-width: 310px; height: 800px;margin: 0 auto"></div>
+    <script type="text/javascript">
+    Highcharts.chart('c_container',{{chart|safe}});
+    </script>
+
+
 {% endblock %}
