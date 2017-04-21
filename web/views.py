@@ -133,6 +133,21 @@ def main_page(request):
         chart['yAxis'] = {'title':{'text':'y'}}
         chart['series'] = list()
         chart['series'].append({'name': 'max(0,x)','data': chart1data})
+    elif graph == 'softmax':
+        chart1data = list()
+        step = 0.01
+        X = np.arange(0.1,5+step, step)
+        e_x = np.exp(X - np.max(X))
+        Y = e_x / e_x.sum()
+        for x,y in zip(X,Y):
+            chart1data.append([x,y])
+        chart = dict()
+        chart['title'] = {'text':'softmax'}
+        chart['chart'] = {'type':'line'}
+        chart['xAxis'] = {'title':{'text':'x'}}
+        chart['yAxis'] = {'title':{'text':'y'}}
+        chart['series'] = list()
+        chart['series'].append({'name': 'S(y_i) = e^yi / sum(e^yi)','data': chart1data})
         
     else:
         chart1data = list()
